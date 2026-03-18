@@ -1,0 +1,8 @@
+{
+  "name": "libscout-web",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "yarn@4.0.0",
+  "description": "LibScout Web UI",
+  "scripts": {}
+}

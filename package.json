@@ -1,0 +1,13 @@
+{
+  "name": "libscout-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "yarn@4.0.0",
+  "description": "LibScout monorepo for web UI and MCP server",
+  "workspaces": [
+    "apps/web",
+    "apps/mcp",
+    "packages/*"
+  ],
+  "scripts": {}
+}

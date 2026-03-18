@@ -1,0 +1,8 @@
+# Nix
+/.envrc
+/.direnv
+
+# Python
+**/.ruff_cache
+/.venv
+**/__pycache__

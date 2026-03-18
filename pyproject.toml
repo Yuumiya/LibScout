@@ -1,0 +1,32 @@
+[project]
+name = "libscout"
+version = "0.0.0"
+description = "LibScout Workspace"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "ruff>=0.5.0",
+  "basedpyright>=1.16.0",
+  "pytest>=8.2.0",
+  "pytest-asyncio>=0.23.6",
+  "anyio>=4.3.0",
+]
+
+[tool.uv.workspace]
+members = ["apps/*", "packages/*", "tools/*"]
+
+[tool.ruff]
+preview = true
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["E", "F", "UP", "B", "SIM", "I"]
+ignore = ["E501"]
+
+[tool.basedpyright]
+typeCheckingMode = "recommended"
+pythonVersion = "3.11"
+reportMissingTypeStubs = false
+reportPrivateUsage = "warning"
