@@ -11,6 +11,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from .downloader import RepoDownloadError, download_repo
 from .models import CrawlError, CrawlResult, CrawlSpec, FileRef, FileTraverser, Platform, RepoRef
 
 logger = logging.getLogger(__name__)
@@ -26,8 +27,9 @@ def _build_repo_search_url(base_url: str, search_terms: Sequence[str], page: int
     return f"{base_url}/search?p={page}&q={encoded}&type=repositories&o=desc&s=updated"
 
 
-def _extract_repo_refs(driver: WebDriver, limit: int, traverser: FileTraverser) -> list[RepoRef]:
-    results: list[RepoRef] = []
+def _extract_repo_slugs(driver: WebDriver, limit: int) -> list[tuple[str, str]]:
+    """Extract (owner, name) pairs from the current search results page."""
+    results: list[tuple[str, str]] = []
     repo_items = driver.find_elements(By.CSS_SELECTOR, "article[data-testid='result-item']")
     if not repo_items:
         repo_items = driver.find_elements(By.CSS_SELECTOR, "li.repo-list-item")
@@ -50,7 +52,7 @@ def _extract_repo_refs(driver: WebDriver, limit: int, traverser: FileTraverser) 
             owner, name = _parse_owner_repo(href)
         except ValueError:
             continue
-        results.append(RepoRef(owner=owner, name=name, driver=driver, traverser=traverser))
+        results.append((owner, name))
     return results
 
 
@@ -76,6 +78,7 @@ class GitHubScraper:
     _base_url: str
     _wait_seconds: float
     _file_traverser: FileTraverser
+    _github_token: str | None
 
     def __init__(
         self,
@@ -83,22 +86,24 @@ class GitHubScraper:
         base_url: str = "https://github.com",
         wait_seconds: float = 10.0,
         file_traverser: FileTraverser | None = None,
+        github_token: str | None = None,
     ) -> None:
         self._driver = driver
         self._base_url = base_url.rstrip("/")
         self._wait_seconds = wait_seconds
         self._file_traverser = file_traverser or _noop_traverser
+        self._github_token = github_token
 
     def crawl(self, spec: CrawlSpec) -> CrawlResult:
         if spec.platform != Platform.GITHUB:
             raise ValueError("GitHubScraper only supports Platform.GITHUB")
 
         errors: list[CrawlError] = []
-        repo_refs: list[RepoRef] = []
+        repo_slugs: list[tuple[str, str]] = []
         driver = self._driver
 
         page = 1
-        while len(repo_refs) < spec.max_repos:
+        while len(repo_slugs) < spec.max_repos:
             search_url = _build_repo_search_url(self._base_url, spec.search_terms, page)
             logger.info("Navigating to search page %s", search_url)
             driver.get(search_url)
@@ -119,12 +124,32 @@ class GitHubScraper:
                 )
                 break
 
-            page_results = _extract_repo_refs(driver, spec.max_repos - len(repo_refs), self._file_traverser)
+            page_results = _extract_repo_slugs(driver, spec.max_repos - len(repo_slugs))
             if not page_results:
                 logger.info("No more results found on page %s", page)
                 break
-            repo_refs.extend(page_results)
+            repo_slugs.extend(page_results)
             page += 1
             time.sleep(0.5)
+
+        # Download each discovered repo via the GitHub API and build RepoRef objects.
+        repo_refs: list[RepoRef] = []
+        for owner, name in repo_slugs:
+            try:
+                result = download_repo(owner, name, token=self._github_token)
+                repo_ref = RepoRef(
+                    owner=owner,
+                    name=name,
+                    driver=driver,
+                    default_branch=result.default_branch,
+                    traverser=self._file_traverser,
+                    local_dir=result.local_dir,
+                )
+                repo_refs.append(repo_ref)
+                logger.info("Downloaded %s/%s to %s", owner, name, result.local_dir)
+            except RepoDownloadError as exc:
+                placeholder = RepoRef(owner=owner, name=name, driver=driver, traverser=self._file_traverser)
+                errors.append(CrawlError(repository=placeholder, message=str(exc)))
+                logger.warning("Failed to download %s/%s: %s", owner, name, exc)
 
         return CrawlResult(spec=spec, repositories=tuple(repo_refs), errors=tuple(errors))
