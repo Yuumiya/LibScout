@@ -3,7 +3,9 @@ name = "libscout"
 version = "0.0.0"
 description = "LibScout Workspace"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+  "libscout-scraper",
+]
 
 [dependency-groups]
 dev = [
@@ -15,7 +17,10 @@ dev = [
 ]
 
 [tool.uv.workspace]
-members = ["apps/*", "packages/*", "tools/*"]
+members = ["packages/*", "tools/*"]
+
+[tool.uv.sources]
+libscout-scraper = { workspace = true }
 
 [tool.ruff]
 preview = true
@@ -30,3 +35,4 @@ typeCheckingMode = "recommended"
 pythonVersion = "3.11"
 reportMissingTypeStubs = false
 reportPrivateUsage = "warning"
+include = ["packages", "scripts"]
