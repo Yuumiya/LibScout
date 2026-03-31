@@ -1,0 +1,156 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>LibScout - Project Pitch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/theme/white.min.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+
+    <style>
+        /* MINIMALIST THEME OVERRIDES */
+        :root {
+            --r-main-font: 'Inter', 'Helvetica Neue', sans-serif;
+            --r-heading-font: 'Inter', 'Helvetica Neue', sans-serif;
+            --r-main-color: #1a1a1a;
+            --r-heading-color: #000;
+            --r-link-color: #555;
+            --r-link-color-hover: #000;
+            --decor-color: #e0e0e0;
+        }
+
+        body { background-color: #fff; }
+        
+        .reveal h1, .reveal h2, .reveal h3 { 
+            text-transform: none; 
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        /* DECORATION ELEMENTS */
+        .slide-decor-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100px;
+            height: 5px;
+            background: #000;
+        }
+        
+        .slide-decor-bottom {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            border-bottom: 2px solid #000;
+            border-right: 2px solid #000;
+            width: 30px;
+            height: 30px;
+        }
+
+        /* TEXT STYLING */
+        .highlight { background: #f0f0f0; padding: 0 5px; font-family: monospace; font-size: 0.9em; }
+        .subtext { font-size: 0.6em; color: #666; margin-top: 2rem; }
+        
+        /* LIST STYLING */
+        .reveal ul { margin-left: 0; padding-left: 1em; }
+        .reveal ul li { margin-bottom: 0.5em; list-style-type: square; }
+
+        /* CODE BLOCK STYLING */
+        .reveal pre { box-shadow: none; border: 1px solid #ddd; background: #fafafa; }
+        .reveal pre code { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <section>
+                <div class="slide-decor-top"></div>
+                <h1>LibScout</h1>
+                <h3 style="color: #666;">The Small Web Library Index</h3>
+                <p style="margin-top: 3rem; font-size: 0.8em;">
+                    Bridging the "Knowledge Gap" for niche & updated libraries.
+                </p>
+                <div class="slide-decor-bottom"></div>
+            </section>
+
+            <section style="text-align: left;">
+                <div class="slide-decor-top" style="width: 50px;"></div>
+                <h2>The Team</h2>
+                <hr style="border: 1px solid #eee; margin: 20px 0;">
+                <ul>
+                    <li><strong>Stanislav Alekseev</strong> - <em>Backend & Tree-sitter Logic</em></li>
+                    <li><strong>Daniil Levtsov</strong> - <em>MCP Integration & Vector DB</em></li>
+                    <li><strong>Georgii Levtsov</strong> - <em>Frontend & Search UX</em></li>
+                </ul>
+                <div class="subtext">Solving the issue of outdated or sparse documentation for small web projects.</div>
+            </section>
+
+            <section style="text-align: left;">
+                <h2>The Problem</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px;">
+                    <div style="border-left: 3px solid #000; padding-left: 20px;">
+                        <h4>For Humans</h4>
+                        <p style="font-size: 0.7em;">Niche libraries often lack real-world examples. "Hello World" isn't enough for production code.</p>
+                    </div>
+                    <div style="border-left: 3px solid #ccc; padding-left: 20px;">
+                        <h4>For AI (LLMs)</h4>
+                        <p style="font-size: 0.7em;">Knowledge cutoffs make AI blind to new releases. AI hallucinates APIs for libraries it doesn't know.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>Architecture</h2>
+                <div style="font-size: 0.65em; text-align: left; margin-top: 20px;">
+                    <p><strong>Stack:</strong> Python (FastAPI), ChromaDB, Next.js, MCP SDK.</p>
+                    <p><strong>The Secret Sauce: <span style="background: #000; color: #fff; padding: 2px 6px;">Tree-sitter</span></strong></p>
+                    <ul>
+                        <li>We don't use "dumb" Regex search.</li>
+                        <li>We parse the <strong>Concrete Syntax Tree (CST)</strong> to extract full functional contexts.</li>
+                    </ul>
+                </div>
+                <pre><code class="language-lisp" data-trim data-noescape>
+;; Sample Tree-sitter Query (Lisp)
+(call_expression
+  function: (member_expression
+    object: (identifier) @lib_name (#eq? @lib_name "my-lib")
+    property: (identifier) @method))
+                </code></pre>
+            </section>
+
+            <section style="text-align: left;">
+                <h2>Final Project</h2>
+                <p style="font-size: 0.8em;">A dual-interface search engine:</p>
+                <ol style="font-size: 0.7em; margin-top: 20px;">
+                    <li><strong>Web UI:</strong> Semantic search for humans (Search by intent, not just keyword).</li>
+                    <li><strong>MCP Server:</strong> A standardised tool for AI Agents (Claude, Cursor) to "look up" library usage.</li>
+                </ol>
+                <div style="background: #f4f4f4; padding: 15px; margin-top: 30px; font-size: 0.6em; border-left: 4px solid #000;">
+                    <strong>MUST HAVE:</strong> GitHub Crawler, Tree-sitter Parser, Vector Index, MCP Endpoint.
+                </div>
+                <div class="slide-decor-bottom"></div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/plugin/highlight/highlight.min.js"></script>
+    <script>
+        Reveal.initialize({
+            controls: true,
+            progress: true,
+            center: true,
+            hash: true,
+            transition: 'fade', // minimal transition
+            plugins: [ RevealHighlight ]
+        });
+    </script>
+</body>
+</html>

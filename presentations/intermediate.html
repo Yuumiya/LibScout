@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>LibScout - Intermediate Report</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reset.min.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/theme/white.min.css"
+        />
+
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+        />
+
+        <style>
+            :root {
+                --r-main-font: "Inter", "Helvetica Neue", sans-serif;
+                --r-heading-font: "Inter", "Helvetica Neue", sans-serif;
+                --r-main-color: #1a1a1a;
+                --r-heading-color: #000;
+                --r-link-color: #555;
+                --r-link-color-hover: #000;
+                --decor-color: #e0e0e0;
+            }
+
+            body {
+                background-color: #fff;
+            }
+
+            .reveal h1,
+            .reveal h2,
+            .reveal h3 {
+                text-transform: none;
+                font-weight: 700;
+                letter-spacing: -0.03em;
+            }
+
+            .slide-decor-top {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100px;
+                height: 5px;
+                background: #000;
+            }
+
+            .slide-decor-bottom {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                border-bottom: 2px solid #000;
+                border-right: 2px solid #000;
+                width: 30px;
+                height: 30px;
+            }
+
+            .highlight {
+                background: #f0f0f0;
+                padding: 0 5px;
+                font-family: monospace;
+                font-size: 0.9em;
+            }
+            .subtext {
+                font-size: 0.6em;
+                color: #666;
+                margin-top: 2rem;
+            }
+
+            .reveal ul {
+                margin-left: 0;
+                padding-left: 1em;
+            }
+            .reveal ul li {
+                margin-bottom: 0.5em;
+                list-style-type: square;
+            }
+
+            .reveal pre {
+                box-shadow: none;
+                border: 1px solid #ddd;
+                background: #fafafa;
+            }
+            .reveal pre code {
+                color: #333;
+            }
+
+            .status-done {
+                color: #1a7f37;
+                font-weight: 700;
+            }
+            .status-wip {
+                color: #bf8700;
+                font-weight: 700;
+            }
+            .status-todo {
+                color: #999;
+                font-weight: 700;
+            }
+
+            .two-col {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 40px;
+                margin-top: 30px;
+            }
+
+            .callout {
+                background: #f4f4f4;
+                padding: 15px;
+                margin-top: 20px;
+                font-size: 0.6em;
+                border-left: 4px solid #000;
+            }
+
+            .callout-warn {
+                background: #fff8e1;
+                border-left-color: #bf8700;
+            }
+
+            .mono {
+                font-family: monospace;
+                font-size: 0.85em;
+            }
+
+            table.clean {
+                width: 100%;
+                font-size: 0.55em;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+            table.clean th,
+            table.clean td {
+                padding: 8px 12px;
+                text-align: left;
+                border-bottom: 1px solid #eee;
+            }
+            table.clean th {
+                font-weight: 700;
+                border-bottom: 2px solid #000;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <!-- ───────────────────── TITLE ───────────────────── -->
+                <section>
+                    <div class="slide-decor-top"></div>
+                    <h1>LibScout</h1>
+                    <h3 style="color: #666">Intermediate Report</h3>
+                    <p style="font-size: 0.55em; color: #999; margin-top: 3rem">
+                        Stanislav Alekseev &middot; Daniil Levtsov &middot;
+                        Georgii Levtsov
+                    </p>
+                    <div class="slide-decor-bottom"></div>
+                </section>
+
+                <!-- ───────────────── QUICK RECAP ─────────────────── -->
+                <section style="text-align: left">
+                    <div class="slide-decor-top" style="width: 50px"></div>
+                    <h2>Quick Recap</h2>
+                    <hr style="border: 1px solid #eee; margin: 20px 0" />
+                    <p style="font-size: 0.75em">
+                        LibScout indexes <strong>real-world usage</strong> of
+                        niche &amp; freshly-released libraries by crawling
+                        GitHub, parsing source with
+                        <span
+                            style="
+                                background: #000;
+                                color: #fff;
+                                padding: 2px 6px;
+                            "
+                            >tree-sitter</span
+                        >, and building a semantic code-search index.
+                    </p>
+                    <div
+                        class="two-col"
+                        style="font-size: 0.7em; margin-top: 20px"
+                    >
+                        <div
+                            style="
+                                border-left: 3px solid #000;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>For Humans</h4>
+                            <p>Search real examples by intent</p>
+                        </div>
+                        <div
+                            style="
+                                border-left: 3px solid #ccc;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>For AI Agents</h4>
+                            <p>MCP endpoint for verified API usage</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ───────────────── ROADMAP STATUS ─────────────── -->
+                <section style="text-align: left">
+                    <h2>Roadmap Status</h2>
+                    <table class="clean">
+                        <thead>
+                            <tr>
+                                <th>Phase</th>
+                                <th>Scope</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Mid March</td>
+                                <td>Project setup, CI, crawler skeleton</td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                            <tr>
+                                <td>End March</td>
+                                <td>
+                                    Repo download, tree-sitter integration, CST
+                                    parsing
+                                </td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                            <tr>
+                                <td>Mid April</td>
+                                <td>
+                                    ChromaDB vector index, RAG pipeline, MCP
+                                    server
+                                </td>
+                                <td class="status-wip">⟳ In Progress</td>
+                            </tr>
+                            <tr>
+                                <td>End April</td>
+                                <td>Web UI, semantic search UX, polishing</td>
+                                <td class="status-todo">— Todo</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="callout" style="margin-top: 30px">
+                        <strong>This report covers the first two phases</strong>
+                    </div>
+                </section>
+
+                <!-- ───────────── ARCHITECTURE OVERVIEW ────────────── -->
+                <section style="text-align: left">
+                    <h2>Architecture</h2>
+                    <pre
+                        style="
+                            font-size: 0.42em;
+                            line-height: 1.5;
+                            background: #fafafa;
+                            padding: 20px;
+                        "
+                    ><code data-trim data-noescape>
+packages/
+  scraper/          ← libscout-scraper   [DONE]
+    browser.py          WebDriver factory (Safari → Firefox)
+    downloader.py       GitHub API tarball download &amp; extraction
+    github_scraper.py   Selenium search → download → RepoRef
+    models.py           CrawlSpec, CrawlResult, RepoRef, FileRef
+
+  parser/           ← libscout-parser    [DONE]
+    detector.py         Language detection (248 languages)
+    parser.py           parse_file() / parse_code()
+    models.py           ParseResult, ParseError
+
+  (vector/)         ← libscout-vector    [NEXT]
+  (mcp/)            ← libscout-mcp       [NEXT]
+                </code></pre>
+                </section>
+
+                <!-- ───────────── SCRAPER: CRAWL FLOW ────────────── -->
+                <section style="text-align: left">
+                    <h2>Scraper — How It Works</h2>
+                    <div style="font-size: 0.65em; margin-top: 20px">
+                        <ol>
+                            <li>
+                                <strong>Search:</strong> Selenium drives a
+                                browser to GitHub search, extracts repo
+                                owner/name
+                            </li>
+                            <li>
+                                <strong>Download:</strong>
+                                <code>download_repo()</code> calls the GitHub
+                                API
+                                <code>/repos/{owner}/{name}/tarball</code> to
+                                fetch a tarball.
+                            </li>
+                            <li>
+                                <strong>Extract:</strong> Tarball is extracted
+                                to a temp directory; (<code>RepoRef</code>)
+                            </li>
+                            <li>
+                                <strong>Walk:</strong>
+                                <code>RepoRef.iter_files()</code> yields
+                                <code>FileRef</code> objects
+                            </li>
+                            <li>
+                                <strong>Read:</strong>
+                                <code>FileRef.fetch_text()</code>
+                            </li>
+                        </ol>
+                    </div>
+                </section>
+
+                <!-- ──────────── RATE LIMITS: THE HARD TRUTH ────────── -->
+                <section style="text-align: left">
+                    <h2>GitHub Rate Limits</h2>
+                    <div style="font-size: 0.65em; margin-top: 25px">
+                        <ul>
+                            <li>
+                                Crawling dozens of repos burns through the rate
+                                limit budget fast
+                            </li>
+                            <li>
+                                The Search API cap is a huge bottleneck —
+                                paginating large result sets requires sleeps and
+                                retries
+                            </li>
+                            <li>
+                                GitHub's
+                                <strong>secondary rate limits</strong> (429
+                                responses) can trigger without warning during
+                                burst traffic, halting a crawl entirely.
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- ──────────── RATE LIMIT MITIGATIONS ────────────── -->
+                <section style="text-align: left">
+                    <h2>Mitigations &amp; Alternatives</h2>
+                    <div class="two-col" style="font-size: 0.62em">
+                        <div
+                            style="
+                                border-left: 3px solid #000;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>What we do now</h4>
+                            <ul>
+                                <li>Token-based auth (5K/hr)</li>
+                                <li>
+                                    Rate-limit detection in the scraper —
+                                    graceful abort on 429
+                                </li>
+                                <li>
+                                    Tarball download instead of cloning (one API
+                                    call per repo)
+                                </li>
+                                <li>
+                                    Inter-page sleep to avoid burst triggers
+                                </li>
+                            </ul>
+                        </div>
+                        <div
+                            style="
+                                border-left: 3px solid #bf8700;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>Under consideration</h4>
+                            <ul>
+                                <li>
+                                    <strong>Third-party providers</strong> — GH
+                                    Archive, Libraries.io, or SourceGraph APIs
+                                    that mirror GitHub data with more generous
+                                    limits
+                                </li>
+                                <li>
+                                    <strong>Local git clone</strong> with
+                                    shallow depth as a fallback when API limits
+                                    are exhausted
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="callout callout-warn" style="margin-top: 20px">
+                        GitHub's rate limits are very strict for a crawler at
+                        scale. For production use, relying solely on the GitHub
+                        search with selenium is not viable — we will likely
+                        integrate a third-party data provider to supplement or
+                        replace direct selenium calls.
+                    </div>
+                </section>
+
+                <!-- ───────────── PARSER: TREE-SITTER ─────────────── -->
+                <section style="text-align: left">
+                    <h2>Parser — Tree-sitter</h2>
+                    <div style="font-size: 0.65em; margin-top: 15px">
+                        <p>
+                            <strong>Tree-sitter</strong> is an incremental
+                            parsing library that produces a
+                            <strong>Concrete Syntax Tree (CST)</strong> — a
+                            lossless, typed representation of source code.
+                        </p>
+                    </div>
+                    <div class="two-col" style="font-size: 0.6em">
+                        <div>
+                            <h4>Why not regex?</h4>
+                            <ul>
+                                <li>Regex can't handle nested structures</li>
+                                <li>No semantic understanding of code</li>
+                                <li>
+                                    Breaks on edge cases and multi-line
+                                    constructs
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4>Why tree-sitter?</h4>
+                            <ul>
+                                <li>
+                                    Supports <strong>248 languages</strong> via
+                                    <code>tree-sitter-language-pack</code>
+                                </li>
+                                <li>
+                                    Produces a full typed CST with node types
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ───────────── PARSING FLOW ─────────────────────── -->
+                <section style="text-align: left">
+                    <h2>Parsing Flow</h2>
+                    <pre
+                        style="font-size: 0.42em"
+                    ><code class="language-python" data-trim data-noescape>
+from libscout_parser import parse_file
+
+result = parse_file("holonomy/__init__.py")
+
+result.language      # → "python"
+result.root_node     # → &lt;Node type=module, children=6&gt;
+result.s_expression  # → "(module (import_statement …) (function_definition …) …)"
+                </code></pre>
+                </section>
+
+                <!-- ───────── LIVE DEMO: FILE CONTENT ─────────────── -->
+                <section style="text-align: left">
+                    <h2>Demo — Source File</h2>
+                    <p style="font-size: 0.55em; color: #666">
+                        holonomy/__init__.py
+                    </p>
+                    <pre
+                        style="font-size: 0.36em; line-height: 1.4"
+                    ><code class="language-python" data-trim data-noescape>
+import trimesh
+
+from holonomy.examples.square_antiprism import square_antiprism
+from holonomy.generate import generate_pegs
+from holonomy.generate.model3d import (
+    PegsConfig, SectionConfig, add_pegs,
+    construct_grooves, create_groove_section,
+    cylinder_intersections,
+)
+
+def main():
+    network = generate_pegs(square_antiprism)
+
+    sphere = trimesh.creation.icosphere(subdivisions=4, radius=0.98)
+    config = SectionConfig(
+        height=0.2, width=0.35,
+        rail_height=0.1, rail_width=0.06,
+        bottleneck_height=0.08, bottleneck_width=0.16,
+    )
+                </code></pre>
+                </section>
+
+                <!-- ───────── LIVE DEMO: PARSE RESULT ─────────────── -->
+                <section style="text-align: left">
+                    <h2>Demo — Parse Result</h2>
+                    <p style="font-size: 0.6em; margin-top: 20px">
+                        The CST captures <strong>every</strong> syntactic
+                        construct:
+                    </p>
+                    <pre
+                        style="font-size: 0.33em; line-height: 1.3"
+                    ><code class="language-lisp" data-trim data-noescape>
+(module
+  (import_statement name: (dotted_name (identifier)))        ;; import trimesh
+  (import_from_statement                                     ;; from holonomy.examples…
+    module_name: (dotted_name (identifier) (identifier) (identifier))
+    name: (dotted_name (identifier)))
+  (import_from_statement …)                                  ;; from holonomy.generate…
+  (import_from_statement                                     ;; from holonomy.generate.model3d…
+    module_name: (dotted_name (identifier) (identifier) (identifier))
+    name: (dotted_name (identifier))
+    name: (dotted_name (identifier))
+    …)
+  (function_definition                                       ;; def main(): …
+    name: (identifier)
+    parameters: (parameters)
+    body: (block
+      (assignment left: (identifier) right: (call …))
+      (assert_statement …)
+      …))
+  (if_statement                                              ;; if __name__ == "__main__"
+    condition: (comparison_operator (identifier) (string …))
+    consequence: (block (call …))))
+                </code></pre>
+                </section>
+
+                <!-- ───────── WHAT THE CST ENABLES ────────────────── -->
+                <section style="text-align: left">
+                    <h2>What the CST Enables</h2>
+                    <div style="font-size: 0.65em; margin-top: 20px">
+                        <p>
+                            With the full
+                            <strong>Concrete Syntax Tree</strong> we can:
+                        </p>
+                        <ul>
+                            <li>
+                                <strong>Extract function signatures</strong> —
+                                names, parameters, return types
+                            </li>
+                            <li>
+                                <strong>Identify library call sites</strong> —
+                                <code>trimesh.creation.icosphere(…)</code> is
+                                parsed as a typed
+                                <code>call_expression</code> with known object +
+                                method
+                            </li>
+                            <li>
+                                <strong>Build embeddings</strong> from
+                                structured code fragments
+                            </li>
+                            <li>
+                                <strong>Query across languages</strong> — same
+                                tree-sitter query syntax works for Python, Rust,
+                                TypeScript, Go, etc
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="callout" style="margin-top: 25px">
+                        <strong>Next step:</strong> Extract meaningful code
+                        chunks from the CST, embed them with a code model, and
+                        store in ChromaDB for semantic retrieval
+                    </div>
+                </section>
+
+                <!-- ───────────── TESTING ─────────────────────────── -->
+                <section style="text-align: left">
+                    <h2>Testing</h2>
+                    <div style="font-size: 0.63em">
+                        <p>
+                            Integration tests against using
+                            <code>WeetHet/holonomy</code> as a stable target:
+                        </p>
+                        <ul>
+                            <li>
+                                Download &amp; extraction: tarball integrity,
+                                directory structure, cleanup
+                            </li>
+                            <li>
+                                <code>RepoRef.iter_files()</code>: path
+                                correctness, relative paths, file counts
+                            </li>
+                            <li>
+                                <code>FileRef.fetch_text()</code>: local reads,
+                                fetcher bypass, error handling
+                            </li>
+                            <li>
+                                Parser: language detection, CST structure, error
+                                cases
+                            </li>
+                        </ul>
+                    </div>
+                    <pre
+                        style="font-size: 0.4em; margin-top: 15px"
+                    ><code data-trim data-noescape>
+$ uv run pytest
+========================= test session starts ==========================
+packages/scraper/tests/test_download_holonomy.py ............ [100%]
+========================= 19 passed =========================
+                </code></pre>
+                </section>
+
+                <!-- ───────────── WHAT'S NEXT ─────────────────────── -->
+                <section style="text-align: left">
+                    <h2>Next Steps</h2>
+                    <div style="font-size: 0.65em; margin-top: 20px">
+                        <ol>
+                            <li>
+                                <strong>CST → Embeddings</strong> — Extract
+                                function/class-level code chunks, generate
+                                vector embeddings using a code model
+                            </li>
+                            <li>
+                                <strong>ChromaDB Index</strong> — Store
+                                embeddings with metadata (repo, file, language,
+                                node type) for fast retrieval
+                            </li>
+                            <li>
+                                <strong>RAG Pipeline</strong> — Retrieve
+                                relevant code fragments given a natural-language
+                                query
+                            </li>
+                            <li>
+                                <strong>MCP Server</strong> — Expose the index
+                                as a tool for AI agents (Claude, Cursor)
+                            </li>
+                            <li>
+                                <strong>Rate limit strategy</strong> — Evaluate
+                                third-party providers (GH Archive, Libraries.io,
+                                SourceGraph) for sustainable crawling
+                            </li>
+                        </ol>
+                    </div>
+                    <div class="callout" style="margin-top: 20px">
+                        <strong>Target:</strong> By end of April — a working Web
+                        UI + MCP endpoint with semantic code search powered by
+                        real library usage data.
+                    </div>
+                    <div class="slide-decor-bottom"></div>
+                </section>
+            </div>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/plugin/highlight/highlight.min.js"></script>
+        <script>
+            Reveal.initialize({
+                controls: true,
+                progress: true,
+                center: true,
+                hash: true,
+                transition: "fade",
+                plugins: [RevealHighlight],
+            });
+        </script>
+    </body>
+</html>
