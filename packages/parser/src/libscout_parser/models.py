@@ -31,3 +31,23 @@ class ParseResult:
     def s_expression(self) -> str:
         """Return an S-expression string representation of the CST."""
         return str(self.tree.root_node)
+
+
+@dataclass(frozen=True)
+class CSTChunk:
+    """A semantically meaningful CST-backed source chunk."""
+
+    source_path: str
+    language: str
+    node_type: str
+    start_byte: int
+    end_byte: int
+    start_line: int
+    end_line: int
+    text: str
+    cst_path: str
+    symbol: str | None = None
+    scope_type: str | None = None
+    identifiers: tuple[str, ...] = ()
+    calls: tuple[str, ...] = ()
+    imports: tuple[str, ...] = ()
