@@ -5,7 +5,8 @@ description = "LibScout Workspace"
 requires-python = ">=3.11"
 dependencies = [
   "libscout-scraper",
-  "libscout-parser"
+  "libscout-parser",
+  "libscout-index"
 ]
 
 [dependency-groups]
@@ -23,6 +24,7 @@ members = ["packages/*", "tools/*"]
 [tool.uv.sources]
 libscout-scraper = { workspace = true }
 libscout-parser = { workspace = true }
+libscout-index = { workspace = true }
 
 [tool.ruff]
 preview = true

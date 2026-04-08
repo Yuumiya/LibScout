@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "libscout-index"
+version = "0.1.0"
+description = "LibScout repository injection, CST embeddings, ChromaDB search, and RAG API."
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "LibScout Team" }]
+dependencies = [
+  "libscout-parser",
+  "libscout-scraper",
+  "chromadb>=0.5.5",
+  "fastapi>=0.111.0",
+  "uvicorn[standard]>=0.30.0",
+]
