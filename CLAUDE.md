@@ -24,7 +24,7 @@ The human web app is search-first. Repository ingestion, seeding, and maintenanc
 
 ```text
 apps/
-  mcp/                # Placeholder workspace for MCP server implementation
+  mcp/                # Workspace metadata for MCP integration
   web/                # React + Vite + shadcn/ui search interface
 
 packages/
@@ -101,6 +101,17 @@ uv run ruff format .
 uv run basedpyright
 ```
 
+### Playwright
+
+```bash
+npm install
+cd apps/web
+npx playwright install chromium
+npm run test:e2e
+```
+
+The e2e suite starts its own fixture API and Vite server. It does not require a pre-existing `.libscout` index.
+
 ### API
 
 ```bash
@@ -174,6 +185,29 @@ The intended search order is:
 
 This means queries like `detect_language`, `parse_file`, or `typer.Option` should be resolved primarily through tree-sitter-derived structure rather than generic semantic similarity.
 
+Explicit structural query tags are supported:
+
+```text
+symbol:parse_file
+call:httpx.get
+import:fastapi
+scope:function
+language:python
+```
+
+The same fields are also accepted by `/api/search` and `/mcp/search_usage` as JSON properties. `scope` currently normalizes function, method, class, module/file, and raw tree-sitter node names.
+
+## MCP Usage
+
+`POST /mcp/search_usage` is the agent-facing usage search endpoint. It returns:
+
+- `hits`: syntax-aware search hits with symbol, language, file path, line range, calls, and imports
+- `answer`: deterministic fallback best-practices brief
+- `content`: MCP-style text content for clients that expect tool-like output
+- `sampling_request`: an MCP `sampling/createMessage` payload when `enable_sampling` is true and hits exist
+
+The server prepares the sampling prompt but does not call an LLM directly; MCP hosts decide whether to execute sampling.
+
 ## Repo Download Flow
 
 1. GitHub repositories can be discovered with the scraper or seeded from a curated list.
@@ -187,7 +221,7 @@ This means queries like `detect_language`, `parse_file`, or `typer.Option` shoul
 
 ## Known Gaps
 
-- MCP server implementation is still a placeholder workspace
-- structural search ranking is improved but still needs more language-specific tuning
-- tree-sitter query patterns are not yet language-specialized beyond generic CST traversal
-- web UI currently exposes structural search results but not explicit symbol/call/import filters yet
+- Python and TypeScript have first-pass language-specific tuning; other languages still use generic CST traversal
+- MCP sampling is prepared as a host-executed prompt, not a server-side LLM call
+- snippet expansion beyond the indexed function/class/module chunk is not implemented yet
+- syntax highlighting is lightweight and not a replacement for grammar-level highlighting

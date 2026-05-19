@@ -5,9 +5,9 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from .service import LibScoutService
+from .service import LibScoutService, build_sampling_prompt, summarize_hits
 from .seeds import DEFAULT_GITHUB_REPO_SEEDS
 
 
@@ -22,9 +22,21 @@ class InjectRepositoryRequest(BaseModel):
 
 
 class SearchRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     query: str = Field(min_length=1)
     limit: int = Field(default=8, ge=1, le=25)
     repo_ids: list[str] = Field(default_factory=list)
+    symbol: str | None = None
+    call: str | None = None
+    import_name: str | None = Field(default=None, alias="import")
+    scope: str | None = None
+    language: str | None = None
+
+
+class McpSearchUsageRequest(SearchRequest):
+    summarize: bool = True
+    enable_sampling: bool = True
 
 
 class RagRequest(BaseModel):
@@ -133,7 +145,16 @@ def create_app(root_dir: str | Path | None = None) -> FastAPI:
 
     @app.post("/api/search")
     def search(payload: SearchRequest) -> dict[str, object]:
-        hits = service.search(query=payload.query, limit=payload.limit, repo_ids=tuple(payload.repo_ids))
+        hits = service.search(
+            query=payload.query,
+            limit=payload.limit,
+            repo_ids=tuple(payload.repo_ids),
+            symbol=payload.symbol,
+            call=payload.call,
+            import_name=payload.import_name,
+            scope=payload.scope,
+            language=payload.language,
+        )
         return {"hits": [hit.__dict__ for hit in hits]}
 
     @app.post("/api/rag")
@@ -144,5 +165,48 @@ def create_app(root_dir: str | Path | None = None) -> FastAPI:
             "answer": answer.answer,
             "hits": [hit.__dict__ for hit in answer.hits],
         }
+
+    @app.post("/mcp/search_usage")
+    def mcp_search_usage(payload: McpSearchUsageRequest) -> dict[str, object]:
+        hits = service.search(
+            query=payload.query,
+            limit=payload.limit,
+            repo_ids=tuple(payload.repo_ids),
+            symbol=payload.symbol,
+            call=payload.call,
+            import_name=payload.import_name,
+            scope=payload.scope,
+            language=payload.language,
+        )
+        answer = summarize_hits(query=payload.query, hits=hits) if payload.summarize and hits else ""
+        response: dict[str, object] = {
+            "query": payload.query,
+            "answer": answer,
+            "hits": [hit.__dict__ for hit in hits],
+            "content": [
+                {
+                    "type": "text",
+                    "text": answer or "No indexed source matched the query.",
+                }
+            ],
+        }
+        if payload.enable_sampling and hits:
+            response["sampling_request"] = {
+                "method": "sampling/createMessage",
+                "params": {
+                    "systemPrompt": "You are LibScout. Produce concise, evidence-grounded library usage guidance.",
+                    "maxTokens": 500,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": {
+                                "type": "text",
+                                "text": build_sampling_prompt(query=payload.query, hits=hits),
+                            },
+                        }
+                    ],
+                },
+            }
+        return response
 
     return app

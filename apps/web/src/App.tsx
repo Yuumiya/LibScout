@@ -4,6 +4,7 @@ import { startTransition, useEffect, useMemo, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CodeSnippet } from "@/components/CodeSnippet"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -123,27 +124,43 @@ export default function App() {
           <CardContent className="p-6 sm:p-8">
             <div className="space-y-4">
               <Textarea
+                data-testid="search-query"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 className="min-h-[160px] text-base"
                 placeholder="How do I handle auth with this library? How is parsing configured? How are errors surfaced?"
               />
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button onClick={handleSearch} disabled={busy !== null} className="sm:flex-1">
+                <Button data-testid="search-button" onClick={handleSearch} disabled={busy !== null} className="sm:flex-1">
                   <Search className="mr-2 h-4 w-4" />
                   {busy === "search" ? "Searching…" : "Search Usage"}
                 </Button>
-                <Button variant="secondary" onClick={handleRag} disabled={busy !== null} className="sm:flex-1">
+                <Button
+                  data-testid="summarize-button"
+                  variant="secondary"
+                  onClick={handleRag}
+                  disabled={busy !== null}
+                  className="sm:flex-1"
+                >
                   <Sparkles className="mr-2 h-4 w-4" />
                   {busy === "rag" ? "Summarizing…" : "Summarize Best Practices"}
                 </Button>
               </div>
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <p data-testid="error-state" className="text-sm text-destructive">
+                  {error}
+                </p>
+              ) : null}
+              {busy ? (
+                <p data-testid="loading-state" className="text-sm text-muted-foreground">
+                  {busy === "rag" ? "Retrieving snippets and preparing a short brief." : "Searching symbols, calls, imports, and semantic matches."}
+                </p>
+              ) : null}
             </div>
           </CardContent>
         </Card>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <div data-testid="search-scope" className="mt-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>Searching</span>
           <Badge variant="outline">{effectiveRepoIds.length || repositories.length} repositories</Badge>
           <Badge variant="outline">{indexedFiles} files</Badge>
@@ -151,7 +168,7 @@ export default function App() {
         </div>
 
         {rag ? (
-          <Card className="mt-6 bg-slate-950 text-slate-50">
+          <Card data-testid="rag-brief" className="mt-6 bg-slate-950 text-slate-50">
             <CardHeader>
               <CardTitle className="text-xl">Best Practices Brief</CardTitle>
               <CardDescription className="text-slate-300">
@@ -168,30 +185,59 @@ export default function App() {
           <CardHeader>
             <CardTitle className="text-xl">Results</CardTitle>
             <CardDescription>
-              {results.length
-                ? `${results.length} semantic matches with surrounding code context.`
-                : "Run a query to inspect indexed usage snippets."}
+              {busy === "search"
+                ? "Looking through structural metadata before vector matches."
+                : results.length
+                  ? `${results.length} semantic matches with surrounding code context.`
+                  : "Run a query to inspect indexed usage snippets."}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div data-testid="results-list" className="space-y-4">
+              {!busy && results.length === 0 ? (
+                <div data-testid="empty-state" className="rounded-xl border border-dashed bg-muted/40 p-8 text-center">
+                  <p className="text-sm font-medium">No snippets to show yet.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Try a symbol query like <span className="font-mono">symbol:parse_file</span>, a call query like{" "}
+                    <span className="font-mono">call:client.get</span>, or a library import like{" "}
+                    <span className="font-mono">import:fastapi</span>.
+                  </p>
+                </div>
+              ) : null}
               {results.map((hit) => (
-                <article key={`${hit.repo_id}-${hit.path}-${hit.start_line}`} className="rounded-xl border bg-background/80 p-4">
+                <article
+                  key={`${hit.repo_id}-${hit.path}-${hit.start_line}`}
+                  data-testid="result-card"
+                  className="rounded-xl border bg-background/80 p-4"
+                >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge>{hit.repo_name}</Badge>
                     <Badge variant="secondary">{hit.language}</Badge>
-                    <Badge variant="outline">{hit.node_type}</Badge>
+                    <Badge variant="outline">{hit.scope_type ?? hit.node_type}</Badge>
                     <span className="text-xs text-muted-foreground">
                       {hit.path}:{hit.start_line}-{hit.end_line}
                     </span>
                     <span className="ml-auto text-xs font-semibold text-foreground">{hit.score.toFixed(3)}</span>
                   </div>
-                  <p className="mt-3 text-sm font-medium">{hit.symbol ?? "Context snippet"}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted-foreground">{hit.cst_path}</p>
+                  <p data-testid="result-symbol" className="mt-3 text-sm font-medium">
+                    {hit.symbol ?? "Context snippet"}
+                  </p>
+                  <div data-testid="result-metadata" className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span className="rounded-full bg-muted px-2 py-1 font-mono">{hit.node_type}</span>
+                    {hit.calls.slice(0, 4).map((call) => (
+                      <span key={`call-${call}`} className="rounded-full bg-muted px-2 py-1 font-mono">
+                        calls {call}
+                      </span>
+                    ))}
+                    {hit.imports.slice(0, 4).map((importName) => (
+                      <span key={`import-${importName}`} className="rounded-full bg-muted px-2 py-1 font-mono">
+                        imports {importName}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="mt-2 truncate text-xs uppercase tracking-[0.16em] text-muted-foreground">{hit.cst_path}</p>
                   <Separator className="my-4" />
-                  <pre className="overflow-x-auto rounded-lg bg-slate-950 p-4 text-xs leading-6 text-slate-100">
-                    {hit.excerpt}
-                  </pre>
+                  <CodeSnippet code={hit.excerpt} language={hit.language} />
                 </article>
               ))}
             </div>
@@ -207,6 +253,7 @@ export default function App() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
+              data-testid="repo-filter"
               placeholder="Filter libraries by owner/name"
               value={libraryFilter}
               onChange={(event) => setLibraryFilter(event.target.value)}
@@ -218,6 +265,7 @@ export default function App() {
                   return (
                     <button
                       key={repository.id}
+                      data-testid="repo-option"
                       type="button"
                       onClick={() =>
                         setSelectedRepoIds((current) =>
@@ -242,7 +290,7 @@ export default function App() {
                 })}
               </div>
             </ScrollArea>
-            <Button variant="outline" onClick={() => setSelectedRepoIds([])}>
+            <Button data-testid="clear-selection" variant="outline" onClick={() => setSelectedRepoIds([])}>
               Clear Explicit Selection
             </Button>
           </CardContent>

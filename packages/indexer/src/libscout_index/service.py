@@ -21,6 +21,7 @@ from .seeds import DEFAULT_GITHUB_REPO_SEEDS
 
 logger = logging.getLogger(__name__)
 _QUERY_TOKEN_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]{1,}")
+_TAGGED_QUERY_RE = re.compile(r"\b(symbol|call|import|scope|language|lang):([A-Za-z_][A-Za-z0-9_\.:-]*)", re.IGNORECASE)
 _NON_CODE_LANGUAGES = {"markdown", "text", "yaml", "toml", "json"}
 _QUERY_LIBRARY_ALIASES = {
     "fastapi": "fastapi",
@@ -214,6 +215,9 @@ class LibScoutService:
                         "end_line": chunk.end_line,
                         "cst_path": chunk.cst_path,
                         "scope_type": chunk.scope_type or "",
+                        "identifiers": "\n".join(chunk.identifiers),
+                        "calls": "\n".join(chunk.calls),
+                        "imports": "\n".join(chunk.imports),
                     }
                 )
                 cache_rows.append(
@@ -269,10 +273,29 @@ class LibScoutService:
                 reports.append(self.index_repository(repository.id))
             return tuple(reports)
 
-    def search(self, *, query: str, limit: int = 8, repo_ids: tuple[str, ...] = ()) -> tuple[SearchHit, ...]:
+    def search(
+        self,
+        *,
+        query: str,
+        limit: int = 8,
+        repo_ids: tuple[str, ...] = (),
+        symbol: str | None = None,
+        call: str | None = None,
+        import_name: str | None = None,
+        scope: str | None = None,
+        language: str | None = None,
+    ) -> tuple[SearchHit, ...]:
         if not query.strip():
             return ()
-        structural_hits = self._structural_search(query=query, repo_ids=repo_ids, limit=max(limit * 10, 60))
+        parsed_query = _parse_structural_query(
+            query,
+            symbol=symbol,
+            call=call,
+            import_name=import_name,
+            scope=scope,
+            language=language,
+        )
+        structural_hits = self._structural_search(parsed_query=parsed_query, repo_ids=repo_ids, limit=max(limit * 10, 60))
         if self._rebuild_marker_path.exists():
             return structural_hits[:limit]
 
@@ -290,25 +313,35 @@ class LibScoutService:
                 return structural_hits[:limit]
 
         vector_hits = _hits_from_query(result)
-        merged_hits = _merge_and_rerank_hits(query=query, hits=structural_hits + vector_hits)
+        merged_hits = _merge_and_rerank_hits(parsed_query=parsed_query, hits=structural_hits + vector_hits)
         return merged_hits[:limit]
 
-    def answer(self, *, query: str, limit: int = 6, repo_ids: tuple[str, ...] = ()) -> RagAnswer:
-        hits = self.search(query=query, limit=limit, repo_ids=repo_ids)
+    def answer(
+        self,
+        *,
+        query: str,
+        limit: int = 6,
+        repo_ids: tuple[str, ...] = (),
+        symbol: str | None = None,
+        call: str | None = None,
+        import_name: str | None = None,
+        scope: str | None = None,
+        language: str | None = None,
+    ) -> RagAnswer:
+        hits = self.search(
+            query=query,
+            limit=limit,
+            repo_ids=repo_ids,
+            symbol=symbol,
+            call=call,
+            import_name=import_name,
+            scope=scope,
+            language=language,
+        )
         if not hits:
             return RagAnswer(query=query, answer="No indexed source matched the query.", hits=())
 
-        lines = [f"Query: {query}", "", "Relevant evidence:"]
-        for hit in hits[: min(4, len(hits))]:
-            lines.append(
-                f"- {hit.repo_name} {hit.path}:{hit.start_line}-{hit.end_line} "
-                f"({hit.language}, {hit.node_type}) score={hit.score:.3f}"
-            )
-        lines.append("")
-        lines.append("Synthesis:")
-        lines.append("The strongest matches cluster around the files and CST nodes listed above.")
-        lines.append("Use the cited excerpts to ground any final answer or follow-up code inspection.")
-        return RagAnswer(query=query, answer="\n".join(lines), hits=hits)
+        return RagAnswer(query=query, answer=summarize_hits(query=query, hits=hits), hits=hits)
 
     def _delete_repository_chunks(self, repo_id: str) -> None:
         try:
@@ -349,8 +382,13 @@ class LibScoutService:
                 handle.write(json.dumps(row, ensure_ascii=True))
                 handle.write("\n")
 
-    def _structural_search(self, *, query: str, repo_ids: tuple[str, ...], limit: int) -> tuple[SearchHit, ...]:
-        parsed_query = _parse_structural_query(query)
+    def _structural_search(
+        self,
+        *,
+        parsed_query: StructuralQuery,
+        repo_ids: tuple[str, ...],
+        limit: int,
+    ) -> tuple[SearchHit, ...]:
         allowed_repo_ids = set(repo_ids)
         scored_hits: list[tuple[float, SearchHit]] = []
         for cache_path in sorted(self._chunk_cache_dir.glob("*.jsonl")):
@@ -410,6 +448,51 @@ def _stable_id(value: str) -> str:
     return hashlib.sha1(value.encode("utf-8")).hexdigest()
 
 
+def summarize_hits(*, query: str, hits: tuple[SearchHit, ...]) -> str:
+    lines = [f"Query: {query}", "", "Best-practices brief:"]
+    strongest = hits[: min(4, len(hits))]
+    for index, hit in enumerate(strongest, start=1):
+        symbol = hit.symbol or "module context"
+        calls = f"; calls: {', '.join(hit.calls[:4])}" if hit.calls else ""
+        imports = f"; imports: {', '.join(hit.imports[:4])}" if hit.imports else ""
+        lines.append(
+            f"{index}. Prefer the pattern in {hit.repo_name} {hit.path}:{hit.start_line}-{hit.end_line} "
+            f"({hit.language}, {hit.scope_type or hit.node_type}, {symbol}{calls}{imports})."
+        )
+
+    lines.append("")
+    lines.append("Use the highest-scoring structural matches first, then inspect adjacent code before copying a pattern.")
+    lines.append("Treat low-score semantic-only matches as supporting evidence rather than the main implementation guide.")
+    return "\n".join(lines)
+
+
+def build_sampling_prompt(*, query: str, hits: tuple[SearchHit, ...]) -> str:
+    evidence: list[str] = []
+    for index, hit in enumerate(hits[:6], start=1):
+        evidence.append(
+            "\n".join(
+                [
+                    f"[{index}] {hit.repo_name} {hit.path}:{hit.start_line}-{hit.end_line}",
+                    f"language={hit.language} scope={hit.scope_type or hit.node_type} symbol={hit.symbol or ''}",
+                    f"calls={', '.join(hit.calls[:8])}",
+                    f"imports={', '.join(hit.imports[:8])}",
+                    "```",
+                    hit.excerpt[:1200],
+                    "```",
+                ]
+            )
+        )
+    return "\n\n".join(
+        [
+            "Summarize the retrieved LibScout usage snippets into a short best-practices answer.",
+            "Ground every recommendation in the evidence. Prefer exact symbol, call-site, and import matches.",
+            f"User query: {query}",
+            "Evidence:",
+            *evidence,
+        ]
+    )
+
+
 def _build_repo_where(repo_ids: tuple[str, ...]) -> dict[str, object] | None:
     if not repo_ids:
         return None
@@ -422,10 +505,11 @@ def _is_missing_id_error(exc: Exception) -> bool:
     return "Error finding id" in str(exc)
 
 
-def _merge_and_rerank_hits(*, query: str, hits: tuple[SearchHit, ...]) -> tuple[SearchHit, ...]:
+def _merge_and_rerank_hits(*, parsed_query: StructuralQuery, hits: tuple[SearchHit, ...]) -> tuple[SearchHit, ...]:
     merged: dict[tuple[str, str, int, int], SearchHit] = {}
-    parsed_query = _parse_structural_query(query)
     for hit in hits:
+        if not _matches_explicit_filters(parsed_query=parsed_query, hit=hit):
+            continue
         key = (hit.repo_id, hit.path, hit.start_line, hit.end_line)
         reranked_score = max(hit.score, _structural_score(parsed_query=parsed_query, hit=hit, text=hit.excerpt))
         candidate = _replace_hit_score(hit, reranked_score)
@@ -456,20 +540,76 @@ def _replace_hit_score(hit: SearchHit, score: float) -> SearchHit:
     )
 
 
+def _matches_explicit_filters(*, parsed_query: StructuralQuery, hit: SearchHit) -> bool:
+    hit_identifiers = {_normalize_lookup(value) for value in hit.identifiers}
+    hit_calls = {_normalize_lookup(value) for value in hit.calls}
+    hit_imports = {_normalize_lookup(value) for value in hit.imports}
+    symbol_lower = _normalize_lookup(hit.symbol or "")
+    language_lower = _normalize_language(hit.language)
+    scope_lower = _normalize_scope(hit.scope_type or hit.node_type)
+
+    if parsed_query.languages and language_lower not in parsed_query.languages:
+        return False
+    if parsed_query.scopes and scope_lower not in parsed_query.scopes:
+        return False
+    if any(symbol != symbol_lower and symbol not in hit_identifiers for symbol in parsed_query.explicit_symbols):
+        return False
+    if any(call not in hit_calls and not _matches_tail(call, hit_calls) for call in parsed_query.explicit_calls):
+        return False
+    return not any(
+        import_name not in hit_imports and not _matches_prefix(import_name, hit_imports)
+        for import_name in parsed_query.explicit_imports
+    )
+
+
 def _structural_score(*, parsed_query: StructuralQuery, hit: SearchHit, text: str) -> float:
-    if not parsed_query.tokens and not parsed_query.library_tokens:
+    if not parsed_query.has_terms:
         return 0.0
 
-    hit_identifiers = {value.lower() for value in hit.identifiers}
-    hit_calls = {value.lower() for value in hit.calls}
-    hit_imports = {value.lower() for value in hit.imports}
+    hit_identifiers = {_normalize_lookup(value) for value in hit.identifiers}
+    hit_calls = {_normalize_lookup(value) for value in hit.calls}
+    hit_imports = {_normalize_lookup(value) for value in hit.imports}
     repo_name_lower = hit.repo_name.lower()
     path_lower = hit.path.lower()
-    symbol_lower = (hit.symbol or "").lower()
-    scope_lower = (hit.scope_type or hit.node_type).lower()
+    symbol_lower = _normalize_lookup(hit.symbol or "")
+    language_lower = hit.language.lower()
+    scope_lower = _normalize_scope(hit.scope_type or hit.node_type)
     text_lower = text.lower()
 
     score = _code_quality_boost(hit)
+
+    if parsed_query.languages and language_lower not in parsed_query.languages:
+        return 0.0
+    if parsed_query.scopes and scope_lower not in parsed_query.scopes:
+        return 0.0
+
+    for symbol in parsed_query.explicit_symbols:
+        if symbol == symbol_lower:
+            score += 12.0
+        elif symbol in hit_identifiers:
+            score += 7.0
+        else:
+            return 0.0
+
+    for call in parsed_query.explicit_calls:
+        if call in hit_calls:
+            score += 10.0
+        elif _matches_tail(call, hit_calls):
+            score += 7.0
+        else:
+            return 0.0
+        if scope_lower == "function":
+            score += 2.0
+        elif scope_lower == "class":
+            score -= 0.5
+
+    for import_name in parsed_query.explicit_imports:
+        if import_name in hit_imports:
+            score += 9.0
+        elif _matches_prefix(import_name, hit_imports):
+            score += 6.0
+        else:
+            return 0.0
 
     for token in parsed_query.library_tokens:
         if token in repo_name_lower or token in path_lower or token in hit_imports:
@@ -524,9 +664,9 @@ def _structural_score(*, parsed_query: StructuralQuery, hit: SearchHit, text: st
         score += 0.8
     if parsed_query.intent == "call" and hit.calls:
         score += 0.8
-    if parsed_query.intent == "definition" and "function" in scope_lower:
+    if parsed_query.intent == "definition" and scope_lower == "function":
         score += 0.6
-    if parsed_query.intent == "class" and "class" in scope_lower:
+    if parsed_query.intent == "class" and scope_lower == "class":
         score += 0.6
 
     if "detect_language" in hit_identifiers or "parse_file" in hit_identifiers:
@@ -561,6 +701,65 @@ def _tokenize(value: str) -> tuple[str, ...]:
     return tuple(tokens)
 
 
+def _extract_tagged_values(query: str) -> dict[str, tuple[str, ...]]:
+    values: dict[str, list[str]] = {}
+    for match in _TAGGED_QUERY_RE.finditer(query):
+        tag = match.group(1).lower()
+        value = match.group(2)
+        values.setdefault(tag, []).append(value)
+    return {tag: tuple(tag_values) for tag, tag_values in values.items()}
+
+
+def _normalize_filter_values(values: list[str | None]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value is None:
+            continue
+        for part in value.split(","):
+            lookup = _normalize_lookup(part)
+            if not lookup or lookup in seen:
+                continue
+            seen.add(lookup)
+            normalized.append(lookup)
+    return tuple(normalized)
+
+
+def _normalize_lookup(value: str) -> str:
+    return value.strip().lower().replace("-", "_")
+
+
+def _normalize_scope(value: str) -> str:
+    lookup = _normalize_lookup(value)
+    if "class" in lookup:
+        return "class"
+    if "function" in lookup or "method" in lookup or lookup in {"arrow_function", "callable"}:
+        return "function"
+    if lookup in {"module", "file", "file_window", "program", "module_scope"}:
+        return "module"
+    return lookup
+
+
+def _normalize_language(value: str) -> str:
+    lookup = _normalize_lookup(value)
+    aliases = {
+        "py": "python",
+        "ts": "typescript",
+        "tsx": "tsx",
+        "js": "javascript",
+        "jsx": "jsx",
+    }
+    return aliases.get(lookup, lookup)
+
+
+def _matches_tail(needle: str, values: set[str]) -> bool:
+    return any(value.endswith(f".{needle}") or value.endswith(f"_{needle}") for value in values)
+
+
+def _matches_prefix(needle: str, values: set[str]) -> bool:
+    return any(value == needle or value.startswith(f"{needle}.") for value in values)
+
+
 def _token_weight(token: str) -> float:
     if len(token) >= 10:
         return 2.5
@@ -578,18 +777,45 @@ class StructuralQuery:
     library_tokens: tuple[str, ...]
     symbol_tokens: tuple[str, ...]
     compound_symbols: tuple[str, ...]
+    explicit_symbols: tuple[str, ...] = ()
+    explicit_calls: tuple[str, ...] = ()
+    explicit_imports: tuple[str, ...] = ()
+    scopes: tuple[str, ...] = ()
+    languages: tuple[str, ...] = ()
     exact_symbol: str | None = None
     intent: str | None = None
 
+    @property
+    def has_terms(self) -> bool:
+        return bool(
+            self.tokens
+            or self.library_tokens
+            or self.explicit_symbols
+            or self.explicit_calls
+            or self.explicit_imports
+            or self.scopes
+            or self.languages
+        )
 
-def _parse_structural_query(query: str) -> StructuralQuery:
-    tokens = _tokenize(query)
+
+def _parse_structural_query(
+    query: str,
+    *,
+    symbol: str | None = None,
+    call: str | None = None,
+    import_name: str | None = None,
+    scope: str | None = None,
+    language: str | None = None,
+) -> StructuralQuery:
+    tagged_values = _extract_tagged_values(query)
+    cleaned_query = _TAGGED_QUERY_RE.sub(" ", query)
+    tokens = _tokenize(cleaned_query)
     library_tokens = tuple(token for token in tokens if token in _QUERY_LIBRARY_ALIASES or token in {"fastapi", "typer", "httpx"})
     symbol_tokens = tuple(token for token in tokens if len(token) >= 4 and token not in library_tokens)
     compound_symbols = _compound_symbols(tokens)
     exact_symbol: str | None = tokens[0] if len(tokens) == 1 else None
     intent: str | None = None
-    lowered = query.lower()
+    lowered = cleaned_query.lower()
     if any(word in lowered for word in {"import", "from "}):
         intent = "import"
     elif any(word in lowered for word in {"call", "invoke", "use "}):
@@ -604,6 +830,14 @@ def _parse_structural_query(query: str) -> StructuralQuery:
         library_tokens=library_tokens,
         symbol_tokens=symbol_tokens,
         compound_symbols=compound_symbols,
+        explicit_symbols=_normalize_filter_values([symbol, *tagged_values.get("symbol", ())]),
+        explicit_calls=_normalize_filter_values([call, *tagged_values.get("call", ())]),
+        explicit_imports=_normalize_filter_values([import_name, *tagged_values.get("import", ())]),
+        scopes=tuple(_normalize_scope(value) for value in _normalize_filter_values([scope, *tagged_values.get("scope", ())])),
+        languages=tuple(
+            _normalize_language(value)
+            for value in _normalize_filter_values([language, *tagged_values.get("language", ()), *tagged_values.get("lang", ())])
+        ),
         exact_symbol=exact_symbol,
         intent=intent,
     )
@@ -656,9 +890,15 @@ def _hits_from_query(result: dict[str, object]) -> tuple[SearchHit, ...]:
                 excerpt=document[:1200],
                 cst_path=str(metadata.get("cst_path", "")),
                 scope_type=str(metadata.get("scope_type", "")) or None,
-                identifiers=(),
-                calls=(),
-                imports=(),
+                identifiers=tuple(_split_metadata_list(metadata.get("identifiers"))),
+                calls=tuple(_split_metadata_list(metadata.get("calls"))),
+                imports=tuple(_split_metadata_list(metadata.get("imports"))),
             )
         )
     return tuple(hits)
+
+
+def _split_metadata_list(value: object) -> list[str]:
+    if not isinstance(value, str):
+        return []
+    return [item for item in value.splitlines() if item]

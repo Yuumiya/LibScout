@@ -25,12 +25,13 @@ class ParseResult:
     @property
     def root_node(self) -> Node:
         """Return the root node of the parsed tree."""
-        return self.tree.root_node
+        root_node = self.tree.root_node
+        return root_node() if callable(root_node) else root_node
 
     @property
     def s_expression(self) -> str:
         """Return an S-expression string representation of the CST."""
-        return str(self.tree.root_node)
+        return str(self.root_node)
 
 
 @dataclass(frozen=True)

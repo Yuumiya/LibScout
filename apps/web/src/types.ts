@@ -24,6 +24,10 @@ export type SearchHit = {
   score: number
   excerpt: string
   cst_path: string
+  scope_type: string | null
+  identifiers: string[]
+  calls: string[]
+  imports: string[]
 }
 
 export type SearchResponse = {

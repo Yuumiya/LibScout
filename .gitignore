@@ -6,3 +6,19 @@
 **/.ruff_cache
 /.venv
 **/__pycache__
+/.idea
+/.libscout
+/.pytest_cache
+
+# JavaScript
+node_modules/
+package-lock.json
+
+# Playwright
+apps/web/dist/
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/.playwright-data/
+apps/web/*.tsbuildinfo
+apps/web/vite.config.d.ts
+apps/web/vite.config.js

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tree_sitter import Tree
 from tree_sitter_language_pack import get_parser
 
 from .detector import detect_language
@@ -32,7 +33,7 @@ def parse_file(path: str | Path, *, language: str | None = None) -> ParseResult:
     except Exception as exc:
         raise UnsupportedLanguageError(f"Failed to get parser for language {language!r}: {exc}") from exc
 
-    tree = parser.parse(source)
+    tree = _parse_source(parser, source)
 
     return ParseResult(source_path=str(file_path), language=language, tree=tree, source=source)
 
@@ -53,6 +54,13 @@ def parse_code(source: bytes | str, *, language: str) -> ParseResult:
     except Exception as exc:
         raise UnsupportedLanguageError(f"Failed to get parser for language {language!r}: {exc}") from exc
 
-    tree = parser.parse(source_bytes)
+    tree = _parse_source(parser, source_bytes)
 
     return ParseResult(source_path="<string>", language=language, tree=tree, source=source_bytes)
+
+
+def _parse_source(parser: object, source: bytes) -> Tree:
+    try:
+        return parser.parse(source)  # pyright: ignore[reportAttributeAccessIssue]
+    except TypeError:
+        return parser.parse(source.decode("utf-8", errors="replace"))  # pyright: ignore[reportAttributeAccessIssue]

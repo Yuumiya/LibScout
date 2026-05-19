@@ -44,11 +44,11 @@ Make LibScout the best way to search how small, fast-moving libraries are actual
 
 ## Phase 5: Next Steps
 
-- Implement the MCP server in `apps/mcp`
-- Add explicit symbol/call/import filters in the UI
-- Add language-specific tree-sitter query patterns
+- Expand MCP integration beyond the HTTP `/mcp/search_usage` endpoint if a stdio/server transport is needed
+- Add explicit symbol/call/import form controls in the UI if tag-based query syntax is not enough
+- Add language-specific tree-sitter query patterns beyond Python and TypeScript
 - Add snippet expansion to enclosing function/class/module context
-- Add real LLM-backed best-practice summarization instead of placeholder synthesis
+- Let MCP hosts execute sampling for LLM-backed best-practice summarization
 
 ## Suggested 10-Week Breakdown
 
