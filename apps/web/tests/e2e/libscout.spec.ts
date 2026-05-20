@@ -10,8 +10,10 @@ test.describe("LibScout search interface", () => {
     await expect(page.getByTestId("search-query")).toContainText("How do I parse a file")
     await expect(page.getByTestId("search-button")).toHaveText(/Search Usage/)
     await expect(page.getByTestId("summarize-button")).toHaveText(/Summarize Best Practices/)
+    await expect(page.getByTestId("search-examples")).toContainText("HTTP call sites")
+    await expect(page.getByTestId("search-examples")).toContainText("call:httpx.get scope:function")
     await expect(page.getByTestId("search-scope")).toContainText("2 repositories")
-    await expect(page.getByTestId("search-scope")).toContainText("2 files")
+    await expect(page.getByTestId("search-scope")).toContainText("4 files")
     await expect(page.getByTestId("empty-state")).toContainText("No snippets to show yet.")
 
     await page.getByTestId("repo-filter").fill("fixture-py")
@@ -34,6 +36,24 @@ test.describe("LibScout search interface", () => {
     await expect(firstCard.getByTestId("result-metadata")).toContainText("imports httpx")
     await expect(firstCard.locator("code span").filter({ hasText: "def" }).first()).toBeVisible()
     await expect(firstCard.locator("code span").filter({ hasText: "return" }).first()).toBeVisible()
+  })
+
+  test("example queries run searches with useful results", async ({ page }) => {
+    await page.goto("/")
+
+    const examples = [
+      { label: "HTTP call sites", query: "call:httpx.get scope:function", symbol: "fetch_user" },
+      { label: "FastAPI handlers", query: "import:fastapi scope:function", symbol: "read_item" },
+      { label: "Typer options", query: "call:typer.Option scope:function", symbol: "delete" },
+    ]
+
+    for (const example of examples) {
+      const responsePromise = page.waitForResponse(`${apiURL}/api/search`)
+      await page.getByTestId("search-example").filter({ hasText: example.label }).click()
+      await responsePromise
+      await expect(page.getByTestId("search-query")).toHaveValue(example.query)
+      await expect(page.getByTestId("result-card").first().getByTestId("result-symbol")).toHaveText(example.symbol)
+    }
   })
 
   test("repository scoping and language search modes change the result set", async ({ page }) => {

@@ -4,9 +4,8 @@ WORKDIR /app
 
 COPY package.json yarn.lock .yarnrc.yml ./
 COPY apps/web/package.json apps/web/package.json
-COPY apps/mcp/package.json apps/mcp/package.json
 
-RUN corepack enable && yarn install --immutable
+RUN corepack enable && yarn install
 
 COPY apps/web ./apps/web
 

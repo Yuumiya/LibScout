@@ -41,6 +41,31 @@ def unrelated() -> str:
 """.strip(),
         encoding="utf-8",
     )
+    (python_repo / "fastapi_app.py").write_text(
+        """
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class Item(BaseModel):
+    name: str
+
+@app.get("/items/{item_id}")
+def read_item(item_id: str) -> Item:
+    return Item(name=item_id)
+""".strip(),
+        encoding="utf-8",
+    )
+    (python_repo / "cli.py").write_text(
+        """
+import typer
+
+def delete(force: bool = typer.Option(False, "--force")) -> None:
+    print(f"delete force={force}")
+""".strip(),
+        encoding="utf-8",
+    )
 
     typescript_repo = REPOS_ROOT / "fixture-ts"
     typescript_repo.mkdir()

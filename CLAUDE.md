@@ -24,7 +24,6 @@ The human web app is search-first. Repository ingestion, seeding, and maintenanc
 
 ```text
 apps/
-  mcp/                # Workspace metadata for MCP integration
   web/                # React + Vite + shadcn/ui search interface
 
 packages/

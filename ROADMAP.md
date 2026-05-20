@@ -78,6 +78,6 @@ Make LibScout the best way to search how small, fast-moving libraries are actual
 
 ### Weeks 9-10
 
-- MCP server
+- MCP-compatible service endpoint
 - search quality tuning
 - polish and demo hardening

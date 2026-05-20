@@ -13,6 +13,23 @@ import { askRag, fetchRepositories, search } from "@/lib/api"
 import type { RagResponse, Repository, SearchHit } from "@/types"
 
 const DEFAULT_QUERY = "How do I parse a file, detect its language, and extract CST-backed chunks?"
+const SEARCH_EXAMPLES = [
+  {
+    label: "HTTP call sites",
+    query: "call:httpx.get scope:function",
+    description: "Find functions that call a library API.",
+  },
+  {
+    label: "FastAPI handlers",
+    query: "import:fastapi scope:function",
+    description: "Find route functions that use FastAPI imports.",
+  },
+  {
+    label: "Typer options",
+    query: "call:typer.Option scope:function",
+    description: "Inspect CLI callbacks that declare options.",
+  },
+]
 
 export default function App() {
   const [repositories, setRepositories] = useState<Repository[]>([])
@@ -39,12 +56,12 @@ export default function App() {
     }
   }
 
-  async function handleSearch() {
+  async function handleSearch(searchQuery = query) {
     setBusy("search")
     setError(null)
     try {
       const response = await search({
-        query,
+        query: searchQuery,
         limit: 10,
         repo_ids: effectiveRepoIds,
       })
@@ -130,8 +147,30 @@ export default function App() {
                 className="min-h-[160px] text-base"
                 placeholder="How do I handle auth with this library? How is parsing configured? How are errors surfaced?"
               />
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Examples</p>
+                <div data-testid="search-examples" className="grid gap-2 md:grid-cols-3">
+                  {SEARCH_EXAMPLES.map((example) => (
+                    <button
+                      key={example.query}
+                      type="button"
+                      data-testid="search-example"
+                      onClick={() => {
+                        setQuery(example.query)
+                        void handleSearch(example.query)
+                      }}
+                      disabled={busy !== null}
+                      className="min-h-24 rounded-lg border bg-background px-4 py-3 text-left transition hover:border-foreground/30 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <span className="block text-sm font-medium">{example.label}</span>
+                      <span className="mt-1 block break-words font-mono text-xs text-foreground/80">{example.query}</span>
+                      <span className="mt-2 block text-xs leading-5 text-muted-foreground">{example.description}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <Button data-testid="search-button" onClick={handleSearch} disabled={busy !== null} className="sm:flex-1">
+                <Button data-testid="search-button" onClick={() => void handleSearch()} disabled={busy !== null} className="sm:flex-1">
                   <Search className="mr-2 h-4 w-4" />
                   {busy === "search" ? "Searching…" : "Search Usage"}
                 </Button>
