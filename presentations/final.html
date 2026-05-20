@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>LibScout - Final Presentation</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reset.min.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/theme/white.min.css"
+        />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css"
+        />
+
+        <style>
+            :root {
+                --r-main-font:
+                    "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
+                --r-heading-font:
+                    "IBM Plex Mono", "SFMono-Regular", "Menlo", monospace;
+                --r-main-color: #0f172a;
+                --r-heading-color: #0f172a;
+                --r-link-color: #334155;
+                --r-link-color-hover: #000;
+            }
+
+            body {
+                background: #f8fafc;
+            }
+
+            .reveal h1,
+            .reveal h2,
+            .reveal h3 {
+                text-transform: none;
+                font-weight: 700;
+                letter-spacing: 0;
+            }
+
+            .slide-decor-top {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100px;
+                height: 3px;
+                background: #0f172a;
+            }
+
+            .slide-decor-bottom {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                border-bottom: 1px solid #334155;
+                border-right: 1px solid #334155;
+                width: 24px;
+                height: 24px;
+            }
+
+            .reveal ul {
+                margin-left: 0;
+                padding-left: 1em;
+            }
+
+            .reveal ul li {
+                margin-bottom: 0.5em;
+                list-style-type: square;
+            }
+
+            .reveal pre {
+                box-shadow: none;
+                border: 1px solid #cbd5e1;
+                background: #fff;
+                border-radius: 2px;
+            }
+
+            .two-col {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 40px;
+                margin-top: 24px;
+            }
+
+            .callout {
+                background: #f1f5f9;
+                padding: 15px;
+                margin-top: 24px;
+                font-size: 0.62em;
+                border-left: 3px solid #0f172a;
+            }
+
+            .status-done {
+                color: #0f172a;
+                font-weight: 700;
+            }
+
+            .arch-flow {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                margin-top: 28px;
+                font-size: 0.42em;
+                line-height: 1.5;
+            }
+
+            .arch-node {
+                flex: 1;
+                text-align: center;
+                padding: 6px 4px;
+            }
+
+            .arch-arrow {
+                color: #334155;
+                font-size: 1.4em;
+                flex: 0;
+            }
+
+            .arch-inner {
+                margin-top: 8px;
+                font-size: 0.9em;
+                color: #334155;
+            }
+
+            table.clean {
+                width: 100%;
+                font-size: 0.56em;
+                border-collapse: collapse;
+                margin-top: 20px;
+                background: #fff;
+            }
+
+            table.clean th,
+            table.clean td {
+                padding: 8px 12px;
+                text-align: left;
+                border-bottom: 1px solid #eee;
+            }
+
+            table.clean th {
+                font-weight: 700;
+                border-bottom: 1px solid #0f172a;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="reveal">
+            <div class="slides">
+                <section>
+                    <div class="slide-decor-top"></div>
+                    <h1>LibScout</h1>
+                    <h3 style="color: #666">Final Presentation</h3>
+                    <p style="font-size: 0.56em; color: #999; margin-top: 3rem">
+                        Stanislav Alekseev &middot; Daniil Levtsov &middot;
+                        Georgii Levtsov
+                    </p>
+                    <div class="slide-decor-bottom"></div>
+                </section>
+
+                <section style="text-align: left">
+                    <div class="slide-decor-top" style="width: 50px"></div>
+                    <h2>What LibScout Is</h2>
+                    <p style="font-size: 0.75em; margin-top: 20px">
+                        LibScout is a code search tool for small or recently
+                        updated libraries. Instead of indexing only docs, it
+                        indexes <strong>real usage snippets</strong> from public
+                        repositories.
+                    </p>
+                    <div class="two-col" style="font-size: 0.66em">
+                        <div
+                            style="
+                                border-left: 3px solid #0f172a;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>For Developers</h4>
+                            <p>
+                                Search real snippets using symbol/call/import
+                                filters and code context.
+                            </p>
+                        </div>
+                        <div
+                            style="
+                                border-left: 3px solid #94a3b8;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>For AI</h4>
+                            <p>
+                                Use the same index through the HTTP
+                                MCP-compatible endpoint.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                <section style="text-align: left">
+                    <h2>What We Built</h2>
+                    <table class="clean">
+                        <thead>
+                            <tr>
+                                <th>Area</th>
+                                <th>Result</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Repository ingestion</td>
+                                <td>
+                                    GitHub download + local injection + curated
+                                    seeding
+                                </td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                            <tr>
+                                <td>Parsing</td>
+                                <td>
+                                    tree-sitter parsing and CST chunk extraction
+                                </td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                            <tr>
+                                <td>Indexing</td>
+                                <td>
+                                    ChromaDB storage with structural metadata
+                                </td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                            <tr>
+                                <td>Search</td>
+                                <td>
+                                    Search-first monospaced UI + structure-first
+                                    retrieval + ranking tuning
+                                </td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                            <tr>
+                                <td>MCP integration</td>
+                                <td>
+                                    HTTP endpoint:
+                                    <code>/mcp/search_usage</code> with sampling
+                                    payload support
+                                </td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                            <tr>
+                                <td>Deployment</td>
+                                <td>Docker Compose stack for API + web</td>
+                                <td class="status-done">✓ Done</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section style="text-align: left">
+                    <h2>Why Tree-sitter Matters</h2>
+                    <div style="font-size: 0.68em; margin-top: 20px">
+                        <ul>
+                            <li>
+                                We parse files into a
+                                <strong>Concrete Syntax Tree</strong>, not plain
+                                text.
+                            </li>
+                            <li>
+                                We extract function and class level chunks
+                                instead of arbitrary line windows.
+                            </li>
+                            <li>
+                                Each chunk stores structural metadata: symbol,
+                                calls, imports, scope type, line span.
+                            </li>
+                            <li>
+                                Search can rank exact symbols and call shapes
+                                before falling back to generic similarity.
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="callout">
+                        The core product value is
+                        <strong
+                            >finding usable implementation patterns
+                            quickly</strong
+                        >, with structural signals (symbols, calls, imports,
+                        scope) driving ranking.
+                    </div>
+                </section>
+
+                <section style="text-align: left">
+                    <h2>Architecture</h2>
+                    <div class="arch-flow">
+                        <div class="arch-node">GitHub / Local Repos</div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node">
+                            Ingestion
+                            <div class="arch-inner">
+                                download / inject / seed
+                            </div>
+                        </div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node">
+                            Tree-sitter Pipeline
+                            <div class="arch-inner">
+                                parse ↓ chunk ↓ metadata
+                            </div>
+                        </div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node">
+                            Index
+                            <div class="arch-inner">
+                                ChromaDB + structural cache
+                            </div>
+                        </div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node">
+                            FastAPI
+                            <div class="arch-inner">
+                                /api/search<br />↓<br />/api/rag<br />↓<br />/mcp/search_usage
+                            </div>
+                        </div>
+                        <div class="arch-arrow">→</div>
+                        <div class="arch-node">Web UI</div>
+                    </div>
+                </section>
+
+                <section style="text-align: left">
+                    <h2>Current Product State</h2>
+                    <div class="two-col" style="font-size: 0.64em">
+                        <div
+                            style="
+                                border-left: 3px solid #0f172a;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>Working now</h4>
+                            <ul>
+                                <li>Index seeded repositories</li>
+                                <li>
+                                    Search with tag-only or mixed text+tag
+                                    queries
+                                </li>
+                                <li>
+                                    Structure-first ranking with reduced
+                                    free-text drift
+                                </li>
+                                <li>
+                                    Light themed code snippets and compact
+                                    search-focused UI
+                                </li>
+                                <li>Run locally with Docker Compose</li>
+                            </ul>
+                        </div>
+                        <div
+                            style="
+                                border-left: 3px solid #bf8700;
+                                padding-left: 20px;
+                            "
+                        >
+                            <h4>Still limited</h4>
+                            <ul>
+                                <li>GitHub rate limits remain a constraint</li>
+                                <li>
+                                    Structural ranking needs more
+                                    language-specific tuning
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section style="text-align: left">
+                    <h2>Takeaways</h2>
+                    <div style="font-size: 0.7em; margin-top: 20px">
+                        <ol>
+                            <li>
+                                Indexing real code usage is more useful than
+                                relying only on docs.
+                            </li>
+                            <li>
+                                tree-sitter gives better snippet boundaries and
+                                better retrieval signals.
+                            </li>
+                            <li>
+                                Search quality comes from balancing
+                                structure-first matching with practical ranking.
+                            </li>
+                            <li>
+                                This architecture already supports both
+                                developers and MCP clients from one index.
+                            </li>
+                        </ol>
+                    </div>
+                    <div class="slide-decor-bottom"></div>
+                </section>
+            </div>
+        </div>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/plugin/highlight/highlight.min.js"></script>
+        <script>
+            Reveal.initialize({
+                controls: true,
+                progress: true,
+                center: true,
+                hash: true,
+                transition: "fade",
+                plugins: [RevealHighlight],
+            });
+        </script>
+    </body>
+</html>
