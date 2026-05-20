@@ -43,17 +43,20 @@ def unrelated() -> str:
     )
     (python_repo / "fastapi_app.py").write_text(
         """
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
 
 app = FastAPI()
 
 class Item(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
 
 @app.get("/items/{item_id}")
 def read_item(item_id: str) -> Item:
     return Item(name=item_id)
+
+def make_not_authenticated_error() -> HTTPException:
+    return HTTPException(status_code=401, detail="Not authenticated")
 """.strip(),
         encoding="utf-8",
     )
@@ -63,6 +66,18 @@ import typer
 
 def delete(force: bool = typer.Option(False, "--force")) -> None:
     print(f"delete force={force}")
+""".strip(),
+        encoding="utf-8",
+    )
+    (python_repo / "rich_output.py").write_text(
+        """
+import rich
+from rich.console import Console
+
+console = Console()
+
+def report() -> None:
+    console.print("ready")
 """.strip(),
         encoding="utf-8",
     )

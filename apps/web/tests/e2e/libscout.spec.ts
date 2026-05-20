@@ -6,14 +6,17 @@ test.describe("LibScout search interface", () => {
   test("renders the full search shell and indexed repository scope", async ({ page }) => {
     await page.goto("/")
 
-    await expect(page.getByRole("heading", { name: "Search how libraries are actually used." })).toBeVisible()
-    await expect(page.getByTestId("search-query")).toContainText("How do I parse a file")
-    await expect(page.getByTestId("search-button")).toHaveText(/Search Usage/)
-    await expect(page.getByTestId("summarize-button")).toHaveText(/Summarize Best Practices/)
-    await expect(page.getByTestId("search-examples")).toContainText("HTTP call sites")
-    await expect(page.getByTestId("search-examples")).toContainText("call:httpx.get scope:function")
+    await expect(page.getByRole("heading", { name: "search real library usage" })).toBeVisible()
+    await expect(page.getByTestId("search-query")).toHaveValue("")
+    await expect(page.getByTestId("search-query")).toHaveAttribute(
+      "placeholder",
+      "How does FastAPI raise errors? import:fastapi call:HTTPException scope:function",
+    )
+    await expect(page.getByTestId("search-button")).toHaveText(/search/)
+    await expect(page.getByTestId("search-examples")).toContainText("Pydantic fields")
+    await expect(page.getByTestId("search-examples")).toContainText("import:pydantic call:Field scope:class")
     await expect(page.getByTestId("search-scope")).toContainText("2 repositories")
-    await expect(page.getByTestId("search-scope")).toContainText("4 files")
+    await expect(page.getByTestId("search-scope")).toContainText("5 files")
     await expect(page.getByTestId("empty-state")).toContainText("No snippets to show yet.")
 
     await page.getByTestId("repo-filter").fill("fixture-py")
@@ -42,9 +45,26 @@ test.describe("LibScout search interface", () => {
     await page.goto("/")
 
     const examples = [
-      { label: "HTTP call sites", query: "call:httpx.get scope:function", symbol: "fetch_user" },
-      { label: "FastAPI handlers", query: "import:fastapi scope:function", symbol: "read_item" },
-      { label: "Typer options", query: "call:typer.Option scope:function", symbol: "delete" },
+      {
+        label: "Pydantic fields",
+        query: "import:pydantic call:Field scope:class",
+        symbol: "Item",
+      },
+      {
+        label: "Typer options",
+        query: "call:typer.Option scope:function",
+        symbol: "delete",
+      },
+      {
+        label: "FastAPI exceptions",
+        query: "How does FastAPI raise authentication errors? import:fastapi call:HTTPException scope:function",
+        symbol: "make_not_authenticated_error",
+      },
+      {
+        label: "Rich console output",
+        query: "How does Rich print formatted console output? import:rich call:console.print scope:function",
+        symbol: "report",
+      },
     ]
 
     for (const example of examples) {
@@ -76,16 +96,6 @@ test.describe("LibScout search interface", () => {
     await expect(firstCard.getByTestId("result-metadata")).toContainText("calls request")
   })
 
-  test("summary mode shows a best-practices brief and supporting snippets", async ({ page }) => {
-    await page.goto("/")
-    await page.getByTestId("search-query").fill("call:httpx.get")
-    await page.getByTestId("summarize-button").click()
-
-    await expect(page.getByTestId("rag-brief")).toContainText("Best Practices Brief")
-    await expect(page.getByTestId("rag-brief")).toContainText("Prefer the pattern")
-    await expect(page.getByTestId("result-card").first().getByTestId("result-symbol")).toHaveText("fetch_user")
-  })
-
   test("empty, loading, and error states are visible", async ({ page }) => {
     await page.goto("/")
 
@@ -105,7 +115,7 @@ test.describe("LibScout search interface", () => {
 
     await page.getByTestId("search-query").fill("symbol:does_not_exist")
     await page.getByTestId("search-button").click()
-    await expect(page.getByTestId("loading-state")).toContainText("Searching symbols")
+    await expect(page.getByTestId("loading-state")).toContainText("searching symbols")
     await expect(page.getByTestId("empty-state")).toContainText("No snippets to show yet.")
 
     forceSearchFailure = true

@@ -577,6 +577,15 @@ def _structural_score(*, parsed_query: StructuralQuery, hit: SearchHit, text: st
     text_lower = text.lower()
 
     score = _code_quality_boost(hit)
+    has_explicit_filters = bool(
+        parsed_query.explicit_symbols
+        or parsed_query.explicit_calls
+        or parsed_query.explicit_imports
+        or parsed_query.scopes
+        or parsed_query.languages
+    )
+    # Keep free-text helpful, but let explicit structural tags dominate ranking.
+    semantic_factor = 0.35 if has_explicit_filters else 1.0
 
     if parsed_query.languages and language_lower not in parsed_query.languages:
         return 0.0
@@ -613,37 +622,37 @@ def _structural_score(*, parsed_query: StructuralQuery, hit: SearchHit, text: st
 
     for token in parsed_query.library_tokens:
         if token in repo_name_lower or token in path_lower or token in hit_imports:
-            score += 1.4
+            score += 1.4 * semantic_factor
 
     if parsed_query.exact_symbol:
         if parsed_query.exact_symbol == symbol_lower:
-            score += 8.0
+            score += 8.0 * semantic_factor
         elif parsed_query.exact_symbol in hit_calls:
-            score += 5.0
+            score += 5.0 * semantic_factor
         elif parsed_query.exact_symbol in hit_identifiers:
-            score += 4.0
+            score += 4.0 * semantic_factor
 
     for compound in parsed_query.compound_symbols:
         if compound == symbol_lower:
-            score += 3.0
+            score += 3.0 * semantic_factor
         if compound in hit_identifiers:
-            score += 2.6
+            score += 2.6 * semantic_factor
         if compound in hit_calls:
-            score += 2.8
+            score += 2.8 * semantic_factor
         if compound in hit_imports:
-            score += 2.2
+            score += 2.2 * semantic_factor
 
     for token in parsed_query.symbol_tokens:
         if token in hit_calls:
-            score += 1.7
+            score += 1.7 * semantic_factor
         if token in hit_imports:
-            score += 1.3
+            score += 1.3 * semantic_factor
         if token in hit_identifiers:
-            score += 1.1
+            score += 1.1 * semantic_factor
         if token == symbol_lower or token in symbol_lower:
-            score += 1.4
+            score += 1.4 * semantic_factor
         if token in path_lower:
-            score += 0.7
+            score += 0.7 * semantic_factor
 
     query_weights = {token: _token_weight(token) for token in parsed_query.tokens}
     total_weight = sum(query_weights.values()) or 1.0
@@ -658,20 +667,20 @@ def _structural_score(*, parsed_query: StructuralQuery, hit: SearchHit, text: st
             or token in text_lower
         ):
             matched_weight += weight
-    score += matched_weight / total_weight
+    score += (matched_weight / total_weight) * semantic_factor
 
     if parsed_query.intent == "import" and hit.imports:
-        score += 0.8
+        score += 0.8 * semantic_factor
     if parsed_query.intent == "call" and hit.calls:
-        score += 0.8
+        score += 0.8 * semantic_factor
     if parsed_query.intent == "definition" and scope_lower == "function":
-        score += 0.6
+        score += 0.6 * semantic_factor
     if parsed_query.intent == "class" and scope_lower == "class":
-        score += 0.6
+        score += 0.6 * semantic_factor
 
     if "detect_language" in hit_identifiers or "parse_file" in hit_identifiers:
         if {"parse", "language"} & set(parsed_query.tokens):
-            score += 0.6
+            score += 0.6 * semantic_factor
 
     return score
 
@@ -680,10 +689,11 @@ def _code_quality_boost(hit: SearchHit) -> float:
     score = 0.0
     if hit.language not in _NON_CODE_LANGUAGES:
         score += 0.15
-    if "docs/" in hit.path or hit.language in _NON_CODE_LANGUAGES or hit.node_type == "document":
+    if hit.language in _NON_CODE_LANGUAGES or hit.node_type == "document":
         score -= 0.25
-    if "test" in hit.path.lower():
-        score -= 0.05
+    lower_path = hit.path.lower()
+    if lower_path.startswith("tests/") or "/tests/" in lower_path or "test_" in lower_path:
+        score -= 0.7
     return score
 
 
